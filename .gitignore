@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+overlay/overlay
+.DS_Store
+*.mov
+*.mp4
+state/
+.venv/

@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m compileall -q .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build macOS overlay
+        if: runner.os == 'macOS'
+        run: swiftc -O -o overlay/overlay overlay/overlay.swift
+      - name: macOS overlay smoke
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cat > payload.json <<'JSON'
+          {"header": "MEETING", "title": "Design sync", "subtitle": "starts in 5 min · 14:30", "link": "", "auto_close": 4, "sound": false}
+          JSON
+          ./overlay/overlay < payload.json &
+          pid=$!
+          sleep 2
+          screencapture -x overlay-macos.png || true
+          rc=0
+          wait $pid || rc=$?
+          echo "overlay exit code: $rc"
+          test "$rc" -eq 0
+      - name: Upload macOS screenshot
+        if: runner.os == 'macOS' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-macos
+          path: overlay-macos.png
+          if-no-files-found: ignore
+
+      - name: Windows overlay smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-Content -Path payload.json -Encoding utf8 -Value '{"header": "MEETING", "title": "Design sync", "subtitle": "starts in 5 min · 14:30", "link": "", "auto_close": 4, "sound": false}'
+          $p = Start-Process -FilePath python -ArgumentList 'overlay/overlay_tk.py' -RedirectStandardInput payload.json -PassThru
+          $null = $p.Handle  # cache the handle so ExitCode is readable after exit
+          Start-Sleep -Seconds 2
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$PWD\overlay-windows.png")
+          } catch { Write-Host "screenshot failed: $_" }
+          Wait-Process -Id $p.Id
+          $p.Refresh()
+          Write-Host "overlay exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "overlay exited with $($p.ExitCode)" }
+      - name: Upload Windows screenshot
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-windows
+          path: overlay-windows.png
+          if-no-files-found: ignore
+      - name: Windows installer smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\install.ps1
+          if (-not (Get-ScheduledTask -TaskName MeetingAlarm -ErrorAction SilentlyContinue)) { throw 'task missing after install' }
+          .\uninstall.ps1
+          if (Get-ScheduledTask -TaskName MeetingAlarm -ErrorAction SilentlyContinue) { throw 'task still present after uninstall' }

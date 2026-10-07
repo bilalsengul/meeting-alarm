@@ -1,0 +1,11 @@
+{
+  "lead_minutes": [5, 0],
+  "poll_seconds": 30,
+  "snooze_minutes": 2,
+  "repeat_after_start_minutes": 2,
+  "repeat_until_minutes_after": 15,
+  "skip_declined": true,
+  "only_events_with_link_or_guests": false,
+  "calendars": "selected",
+  "language": "en"
+}
