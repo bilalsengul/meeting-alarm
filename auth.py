@@ -10,7 +10,6 @@ Writes credentials.json into $MEETING_ALARM_HOME (default ~/.meeting-alarm).
 import argparse
 import json
 import os
-import shutil
 import time
 import urllib.parse
 import urllib.request
@@ -25,11 +24,15 @@ CLIENT_SECRET = os.path.join(BASE, "client_secret.json")
 CRED = os.path.join(BASE, "credentials.json")
 
 
-def private_chmod(path: str) -> None:
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass  # not supported on every filesystem (e.g. Windows)
+def write_private(path: str, text: str) -> None:
+    """Create (or replace) a file readable only by the current user."""
+    if os.path.exists(path):
+        os.remove(path)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 
 
 def default_language() -> str:
@@ -79,8 +82,8 @@ def main() -> int:
     lang = a.language or default_language()
     os.makedirs(BASE, exist_ok=True)
     if a.client_secret:
-        shutil.copyfile(a.client_secret, CLIENT_SECRET)
-        private_chmod(CLIENT_SECRET)
+        with open(a.client_secret, encoding="utf-8") as f:
+            write_private(CLIENT_SECRET, f.read())
     if not os.path.exists(CLIENT_SECRET):
         print(f"ERROR {CLIENT_SECRET} not found. Follow the 'Google OAuth client' section of the README, "
               "then run: python3 auth.py --client-secret /path/to/client_secret.json", flush=True)
@@ -110,9 +113,7 @@ def main() -> int:
     out = {"refresh_token": tok["refresh_token"], "scope": tok.get("scope", SCOPES)}
     if a.email:
         out["email"] = a.email
-    with open(CRED, "w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
-    private_chmod(CRED)
+    write_private(CRED, json.dumps(out, indent=2))
     print(f"OK wrote {CRED}", flush=True)
     return 0
 

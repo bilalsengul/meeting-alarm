@@ -167,5 +167,14 @@ class StringsTests(unittest.TestCase):
         self.assertNotEqual(strings.t("tr", "header"), strings.t("en", "header"))
 
 
+class JoinLinkSchemeTests(unittest.TestCase):
+    def test_non_http_schemes_are_dropped(self):
+        self.assertEqual(alarm.join_link({"hangoutLink": "javascript:alert(1)"}), "")
+        self.assertEqual(alarm.join_link({"conferenceData": {"entryPoints": [
+            {"entryPointType": "video", "uri": "file:///etc/passwd"}]}}), "")
+        self.assertEqual(alarm.join_link({"hangoutLink": "ftp://x", "description": "https://zoom.us/j/1"}),
+                         "https://zoom.us/j/1")
+
+
 if __name__ == "__main__":
     unittest.main()

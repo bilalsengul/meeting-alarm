@@ -120,17 +120,21 @@ def calendar_ids(cfg: dict) -> list[str]:
     return [c["id"] for c in items if c.get("selected") and not c.get("deleted")]
 
 
+def http_only(url: str) -> str:
+    """Only http(s) links may reach the browser; invites can carry arbitrary schemes."""
+    return url if url.lower().startswith(("https://", "http://")) else ""
+
+
 def join_link(ev: dict) -> str:
-    if ev.get("hangoutLink"):
-        return ev["hangoutLink"]
+    candidates = [ev.get("hangoutLink") or ""]
     for ep in ev.get("conferenceData", {}).get("entryPoints", []):
         if ep.get("entryPointType") == "video" and ep.get("uri"):
-            return ep["uri"]
+            candidates.append(ep["uri"])
     for field in ("location", "description"):
         m = URL_RE.search(ev.get(field) or "")
         if m:
-            return m.group(0)
-    return ""
+            candidates.append(m.group(0))
+    return next((u for u in map(http_only, candidates) if u), "")
 
 
 def self_declined(ev: dict) -> bool:

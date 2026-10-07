@@ -150,7 +150,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc func join() {
-        if let u = URL(string: joinURL), !joinURL.isEmpty { NSWorkspace.shared.open(u) }
+        if let u = URL(string: joinURL), ["http", "https"].contains(u.scheme?.lowercased() ?? "") { NSWorkspace.shared.open(u) }
         exit(10)
     }
     @objc func snooze() { exit(20) }

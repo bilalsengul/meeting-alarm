@@ -174,7 +174,7 @@ class Overlay:
 
     def join(self):
         link = str(self.cfg["link"] or "")
-        if link:
+        if link.lower().startswith(("https://", "http://")):
             try:
                 webbrowser.open(link)
             except Exception:
