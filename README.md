@@ -1,5 +1,7 @@
 # meeting-alarm
 
+[![ci](https://github.com/bilalsengul/meeting-alarm/actions/workflows/ci.yml/badge.svg)](https://github.com/bilalsengul/meeting-alarm/actions/workflows/ci.yml)
+
 A calendar alarm you cannot miss: a full-screen red alert that takes over every monitor when a Google Calendar meeting is about to start.
 
 ![demo](docs/demo.gif)
